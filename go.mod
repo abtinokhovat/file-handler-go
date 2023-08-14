@@ -1,4 +1,4 @@
-module file-handler-go
+module github.com/abtinokhovat/file-handler-go
 
 go 1.20
 
