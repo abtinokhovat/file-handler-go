@@ -2,12 +2,13 @@ package tests
 
 import (
 	"bytes"
-	handler "file-handler-go"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	io2 "io"
 	"os"
 	"testing"
+
+	handler "github.com/abtinokhovat/file-handler-go"
+	"github.com/stretchr/testify/assert"
 )
 
 type testStruct struct {

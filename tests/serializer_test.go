@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	handler "file-handler-go"
 	"testing"
+
+	handler "github.com/abtinokhovat/file-handler-go"
 )
 
 var (
