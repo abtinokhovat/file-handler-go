@@ -22,19 +22,19 @@ type FileIOHandler[T any] interface {
 
 type JsonIOHandler[T any] struct {
 	FileIOHandler[T]
-	FilePath   string
+	filePath   string
 	serializer Serializer[T]
 }
 
 func NewJsonIOHandler[T any](path string, serializer Serializer[T]) *JsonIOHandler[T] {
 	return &JsonIOHandler[T]{
-		FilePath:   path,
+		filePath:   path,
 		serializer: serializer,
 	}
 }
 
 func (h *JsonIOHandler[T]) openFile() (*os.File, error) {
-	file, err := os.OpenFile(h.FilePath, os.O_RDWR, 0644)
+	file, err := os.OpenFile(h.filePath, os.O_RDWR, 0644)
 	if err != nil {
 		return nil, err
 	}
