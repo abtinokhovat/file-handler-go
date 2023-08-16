@@ -33,12 +33,16 @@ func NewJsonIOHandler[T any](path string, serializer Serializer[T]) *JsonIOHandl
 	}
 }
 
-func (h *JsonIOHandler[T]) openFile() (*os.File, error) {
-	file, err := os.OpenFile(h.filePath, os.O_RDWR, 0644)
+func (h *JsonIOHandler[T]) File(path string) (*os.File, error) {
+	file, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
 		return nil, err
 	}
 	return file, nil
+}
+
+func (h *JsonIOHandler[T]) openFile() (*os.File, error) {
+	return h.File(h.filePath)
 }
 
 // Should read a file and return the data in file with type of data

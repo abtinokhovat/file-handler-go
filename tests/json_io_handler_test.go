@@ -35,7 +35,7 @@ var (
 			Likes: []int{7, 19},
 		},
 	}
-	testDataString = `[{"Name":"David","Age":40,"Likes":[15 23 35]},{"Name":"Eve","Age":22,"Likes":[12 28 44 72]},{"Name":"Frank","Age":31,"Likes":[7 19]}]`
+	testDataString = "Name: David\nAge: 40\nLikes: [15 23 35]\n\nName: Eve\nAge: 22\nLikes: [12 28 44 72]\n\nName: Frank\nAge: 31\nLikes: [7 19]\n\n"
 )
 
 type MockSerializer struct {
@@ -43,22 +43,14 @@ type MockSerializer struct {
 }
 
 func (s MockSerializer) Serialize(data testStruct) (string, error) {
-	return fmt.Sprintf("{ Name: %s, Age: %d, Likes: %v }", data.Name, data.Age, data.Likes), nil
+	return fmt.Sprintf("Name: %s\nAge: %d\nLikes: %v", data.Name, data.Age, data.Likes), nil
 }
 
 func (s MockSerializer) SerializeMany(data []testStruct) (string, error) {
 	var buff bytes.Buffer
-	// first of the string
-	buff.WriteRune('[')
-	for i, value := range data {
-		buff.WriteString(fmt.Sprintf(`{"Name":"%s","Age":%d,"Likes":%v}`, value.Name, value.Age, value.Likes))
-		if i != len(data)-1 {
-			buff.WriteRune(',')
-		}
+	for _, value := range data {
+		buff.WriteString(fmt.Sprintf("Name: %s\nAge: %d\nLikes: %v\n\n", value.Name, value.Age, value.Likes))
 	}
-
-	// write the end of the json file
-	buff.WriteRune(']')
 	return buff.String(), nil
 }
 
@@ -87,6 +79,52 @@ func createTempFile(data string) (*os.File, error) {
 	}
 
 	return file, nil
+}
+
+func TestJsonIOHandler_File(t *testing.T) {
+	t.Run("open file that does not exists", func(t *testing.T) {
+		// 1. setup
+		fileHandler := new(handler.JsonIOHandler[string])
+		file, err := fileHandler.File("test.txt")
+		defer os.Remove(file.Name())
+
+		if err != nil {
+			t.Errorf("error occured on File, %s", err)
+		}
+
+		// 2. execution
+		read, err := os.ReadFile(file.Name())
+		if err != nil {
+			t.Fatalf("error occured on Reading the file, %s", err)
+		}
+
+		// 3. assertion
+		assert.NotNil(t, read, "expected to read a file but failed")
+	})
+
+	t.Run("open file that exists", func(t *testing.T) {
+		// 1. setup
+		created, err := os.Create("test.txt")
+		if err != nil {
+			t.Errorf("error occured on creating test file, %s", err)
+		}
+		defer os.Remove(created.Name())
+
+		fileHandler := new(handler.JsonIOHandler[string])
+		file, err := fileHandler.File("test.txt")
+		if err != nil {
+			t.Fatalf("error occured on opening , %s", err)
+		}
+
+		// 2. execution
+		read, err := os.ReadFile(file.Name())
+		if err != nil {
+			t.Errorf("error occured on Reading the file, %s", err)
+		}
+
+		// 3. assertion
+		assert.NotNil(t, read, "expected to make a file but failed")
+	})
 }
 
 func TestJsonIOHandler_Read(t *testing.T) {
@@ -160,15 +198,30 @@ func TestJsonIOHandler_DeleteAll(t *testing.T) {
 	t.Run("not_valid_file", func(t *testing.T) {
 		// 1. setup
 		serializer := MockSerializer{}
-		ioHandler := handler.NewJsonIOHandler[testStruct]("non_existent_file.json", serializer)
+		filePath := "non_existent_file.json"
+		ioHandler := handler.NewJsonIOHandler[testStruct](filePath, serializer)
 
 		// 2. execution
 		err := ioHandler.DeleteAll()
+		if err != nil {
+			t.Errorf("failed on deleting the content in the file %s", err)
+		}
+
+		file, err := os.OpenFile(filePath, os.O_RDWR, 0777)
+		if err != nil {
+			t.Errorf("failed on openning the file %s", err)
+		}
+		defer file.Close()
+		defer os.Remove(filePath)
+
+		content, err := io2.ReadAll(file)
+		if err != nil {
+			t.Errorf("failed on reading the content in the file %s", err)
+		}
 
 		// 3. assertion
-		if err == nil {
-			t.Errorf("Expected an error, but got none")
-		}
+		assert.Equalf(t, len(content), 0, "Falied to delete the content\nDeleteErr: %s,\n data: %v", err, content)
+
 	})
 }
 
@@ -207,14 +260,28 @@ func TestJsonIOHandler_DeleteAndWrite(t *testing.T) {
 	t.Run("not_valid_file", func(t *testing.T) {
 		// 1. setup
 		serializer := MockSerializer{}
-		ioHandler := handler.NewJsonIOHandler[testStruct]("non_existent_file.json", serializer)
+		filePath := "non_existent_file.json"
+		ioHandler := handler.NewJsonIOHandler[testStruct](filePath, serializer)
 
 		// 2. execution
 		err := ioHandler.DeleteAndWrite(testDataHandler)
+		if err != nil {
+			t.Errorf("failed on deleting the content in the file %s", err)
+		}
+
+		file, err := os.OpenFile(filePath, os.O_RDWR, 0777)
+		if err != nil {
+			t.Errorf("failed on openning the file %s", err)
+		}
+		defer file.Close()
+		defer os.Remove(filePath)
+
+		content, err := io2.ReadAll(file)
+		if err != nil {
+			t.Errorf("failed on reading the content in the file %s", err)
+		}
 
 		// 3. assertion
-		if err == nil {
-			t.Errorf("Expected an error, but got none")
-		}
+		assert.Equalf(t, testDataString, string(content), "Falied to delete the content\nDeleteErr: %s,\n data: %v", err, content)
 	})
 }
